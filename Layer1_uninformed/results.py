@@ -33,7 +33,7 @@ def run_layer1_tests():
     # Run each test case
     for i, test in enumerate(test_cases):
         print(f"\n{test['name']}")
-        print(f"  From: {graph.get_node_name(test['start'])} → To: {graph.get_node_name(test['goal'])}")
+        print(f"  From: {graph.get_node_name(test['start'])} -> To: {graph.get_node_name(test['goal'])}")
         print(f"  Purpose: {test['why']}")
         print()
         
@@ -53,13 +53,13 @@ def run_layer1_tests():
         ucs_path_names = [graph.get_node_name(n) for n in ucs_path]
         
         # Print results for this test
-        print(f"  BFS:  Path: {' → '.join(bfs_path_names)}")
+        print(f"  BFS:  Path: {' -> '.join(bfs_path_names)}")
         print(f"        Cost: {bfs_cost} min | Nodes expanded: {bfs_expanded} | Max frontier: {bfs_frontier}")
         print()
-        print(f"  DFS:  Path: {' → '.join(dfs_path_names)}")
+        print(f"  DFS:  Path: {' -> '.join(dfs_path_names)}")
         print(f"        Cost: {dfs_cost} min | Nodes expanded: {dfs_expanded} | Max frontier: {dfs_frontier}")
         print()
-        print(f"  UCS:  Path: {' → '.join(ucs_path_names)}")
+        print(f"  UCS:  Path: {' -> '.join(ucs_path_names)}")
         print(f"        Cost: {ucs_cost} min | Nodes expanded: {ucs_expanded} | Max frontier: {ucs_frontier}")
         print()
         
@@ -77,16 +77,16 @@ def run_layer1_tests():
         # Analysis
         print(f"  ANALYSIS:")
         if bfs_cost == ucs_cost:
-            print(f"    ✓ BFS and UCS found same cost path (weights not important for hop count)")
+            print(f"    [OK] BFS and UCS found same cost path (weights not important for hop count)")
         else:
-            print(f"    ✓ BFS cost: {bfs_cost}, UCS cost: {ucs_cost} (UCS better by {bfs_cost - ucs_cost} min)")
+            print(f"    [OK] BFS cost: {bfs_cost}, UCS cost: {ucs_cost} (UCS better by {bfs_cost - ucs_cost} min)")
         
         if dfs_expanded > bfs_expanded + 5:
-            print(f"    ✓ DFS expanded {dfs_expanded - bfs_expanded} MORE nodes than BFS (less efficient)")
+            print(f"    [OK] DFS expanded {dfs_expanded - bfs_expanded} MORE nodes than BFS (less efficient)")
         elif dfs_expanded < bfs_expanded:
-            print(f"    ✓ DFS was lucky — expanded fewer nodes than BFS")
+            print(f"    [OK] DFS was lucky — expanded fewer nodes than BFS")
         else:
-            print(f"    ✓ DFS expanded similar number as BFS")
+            print(f"    [OK] DFS expanded similar number as BFS")
         
         print("-" * 120)
     
@@ -128,9 +128,9 @@ def run_layer1_tests():
     print()
     
     print("Observations:")
-    print(f"  • BFS explores systematically by hops, so frontier size grows uniformly")
-    print(f"  • DFS can explore very deep, leading to large frontier in some cases")
-    print(f"  • UCS always finds optimal cost path, but explores more nodes than BFS for hop distance")
+    print(f"  - BFS explores systematically by hops, so frontier size grows uniformly")
+    print(f"  - DFS can explore very deep, leading to large frontier in some cases")
+    print(f"  - UCS always finds optimal cost path, but explores more nodes than BFS for hop distance")
     print()
     print("=" * 120)
 

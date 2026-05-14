@@ -1,131 +1,130 @@
-from karachi_transport.graph import KarachiGraph
+"""
+Hill Climbing algorithms for Karachi network optimization (Layer 3).
+
+Two steepest-ascent variants:
+  - Without sideways moves: stops the moment no strict improvement exists.
+  - With sideways moves: also accepts equal-score moves (plateau walking)
+    up to max_sideways consecutive steps.
+
+Random-Restart Hill Climbing runs one of the above variants 50 times from
+independent random initial states and keeps the best result.
+"""
+
 import random
+from .network_optimizer import NetworkState
 
 
-def hill_climbing(graph, heuristics, start, goal, heuristic_func, max_iterations=100):
+# ---------------------------------------------------------------------------
+# Core steepest-ascent function
+# ---------------------------------------------------------------------------
 
+def hill_climbing_steepest(graph, initial_state=None, allow_sideways=False,
+                           max_sideways=10):
     """
-    Hill Climbing using heuristic guidance.
+    Steepest-ascent hill climbing for network optimisation.
 
-    Moves to neighbor with lowest heuristic value.
-    Stops if no improvement possible.
+    Parameters
+    ----------
+    graph          : KarachiGraph
+    initial_state  : NetworkState or None  (random if None)
+    allow_sideways : bool  — whether to allow moves to equal-score neighbours
+    max_sideways   : int   — max consecutive sideways moves before stopping
+
+    Returns
+    -------
+    best_state : NetworkState
+    best_score : float
+    steps      : int  (number of moves made)
     """
+    state = initial_state if initial_state is not None else NetworkState.random_state(graph)
+    steps = 0
+    sideways_streak = 0
 
-    current = start
+    while True:
+        neighbours = state.get_all_neighbours()
+        best_next = max(neighbours, key=lambda s: s.objective())
+        delta = best_next.objective() - state.objective()
 
-    path = [current]
+        if delta > 1e-9:
+            # Strict improvement — always accept
+            state = best_next
+            steps += 1
+            sideways_streak = 0
 
-    nodes_expanded = 0
+        elif allow_sideways and abs(delta) <= 1e-9 and sideways_streak < max_sideways:
+            # Sideways move (plateau walking)
+            state = best_next
+            steps += 1
+            sideways_streak += 1
 
-    iterations = 0
-
-    while current != goal and iterations < max_iterations:
-
-        neighbors = graph.get_neighbors(current)
-
-        current_h = heuristic_func(current, goal)
-
-        best_neighbor = None
-
-        best_h = current_h
-
-        # Explore neighbors
-        for neighbor, edge_cost in neighbors:
-
-            if neighbor not in path:
-
-                neighbor_h = heuristic_func(neighbor, goal)
-
-                # Move ONLY if heuristic improves
-                if neighbor_h < best_h:
-
-                    best_h = neighbor_h
-
-                    best_neighbor = neighbor
-
-        # Local optimum reached
-        if best_neighbor is None:
-
+        else:
+            # Local optimum or plateau limit reached
             break
 
-        current = best_neighbor
-
-        path.append(current)
-
-        nodes_expanded += 1
-
-        iterations += 1
-
-    # Success
-    if current == goal:
-
-        total_cost = graph.calculate_path_cost(path)
-
-        return path, total_cost, nodes_expanded
-
-    # Failure
-    return None, float("inf"), nodes_expanded
+    return state, state.objective(), steps
 
 
-def hill_climbing_random_restart(
-        graph,
-        heuristics,
-        start,
-        goal,
-        heuristic_func,
-        num_restarts=5
-):
+# ---------------------------------------------------------------------------
+# Random-Restart Hill Climbing
+# ---------------------------------------------------------------------------
 
+def random_restart_hc(graph, num_restarts=50, allow_sideways=False,
+                      max_sideways=10):
     """
-    Hill Climbing with Random Restarts.
+    Random-Restart Hill Climbing.
+
+    Runs hill_climbing_steepest `num_restarts` times from fresh random states
+    and returns the best configuration found, plus per-run statistics.
+
+    Parameters
+    ----------
+    graph         : KarachiGraph
+    num_restarts  : int  — number of independent restarts (assignment: 50)
+    allow_sideways: bool — passed through to hill_climbing_steepest
+    max_sideways  : int  — passed through to hill_climbing_steepest
+
+    Returns
+    -------
+    best_state : NetworkState   — best configuration across all restarts
+    best_score : float
+    stats      : dict           — per-run metrics for reporting
     """
+    # Estimate baseline from random states
+    baseline_scores = [NetworkState.random_state(graph).objective()
+                       for _ in range(10)]
+    baseline = sum(baseline_scores) / len(baseline_scores)
 
-    best_path = None
-
-    best_cost = float("inf")
-
-    total_nodes = 0
+    best_state = None
+    best_score = -1.0
+    all_scores = []
+    all_steps = []
 
     for _ in range(num_restarts):
-
-        neighbors = graph.get_neighbors(start)
-
-        if not neighbors:
-
-            return None, float("inf"), 0
-
-        # Random first move
-        random_neighbor = random.choice(neighbors)[0]
-
-        # Run HC from random neighbor
-        path, cost, nodes = hill_climbing(
+        state, score, steps = hill_climbing_steepest(
             graph,
-            heuristics,
-            random_neighbor,
-            goal,
-            heuristic_func
+            allow_sideways=allow_sideways,
+            max_sideways=max_sideways
         )
+        all_scores.append(score)
+        all_steps.append(steps)
+        if score > best_score:
+            best_score = score
+            best_state = state
 
-        total_nodes += nodes
+    # "Success" = final score at least 5 % above the random baseline
+    success_threshold = baseline * 1.05
+    success_count = sum(1 for s in all_scores if s >= success_threshold)
 
-        if path:
+    stats = {
+        "scores":         all_scores,
+        "steps":          all_steps,
+        "success_rate":   success_count / num_restarts,
+        "avg_score":      sum(all_scores) / len(all_scores),
+        "best_score":     best_score,
+        "avg_steps":      sum(all_steps) / len(all_steps),
+        "baseline":       baseline,
+        "n_restarts":     num_restarts,
+        "allow_sideways": allow_sideways,
+    }
 
-            # Reconnect original start
-            if path[0] != start:
-
-                full_path = [start] + path
-
-            else:
-
-                full_path = path
-
-            full_cost = graph.calculate_path_cost(full_path)
-
-            # Keep best solution
-            if full_cost < best_cost:
-
-                best_cost = full_cost
-
-                best_path = full_path
-
-    return best_path, best_cost, total_nodes
+    return best_state, best_score, stats
