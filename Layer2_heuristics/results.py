@@ -40,7 +40,7 @@ def run_layer2_tests():
     # Run each test case
     for i, test in enumerate(test_cases):
         print(f"\n{test['name']}")
-        print(f"  From: {graph.get_node_name(test['start'])} → To: {graph.get_node_name(test['goal'])}")
+        print(f"  From: {graph.get_node_name(test['start'])} -> To: {graph.get_node_name(test['goal'])}")
         print(f"  Purpose: {test['why']}")
         print()
         
@@ -84,26 +84,26 @@ def run_layer2_tests():
         
         # Print results
         print(f"  LAYER 1 (Baseline):")
-        print(f"    UCS:  Path: {' → '.join(ucs_path_names)}")
+        print(f"    UCS:  Path: {' -> '.join(ucs_path_names)}")
         print(f"          Cost: {ucs_cost} min | Nodes expanded: {ucs_expanded} | Max frontier: {ucs_frontier}")
         print()
         
         print(f"  LAYER 2 (Heuristic):")
-        print(f"    Greedy(h1): Path: {' → '.join(greedy_h1_names)}")
+        print(f"    Greedy(h1): Path: {' -> '.join(greedy_h1_names)}")
         print(f"                Cost: {greedy_h1_cost} min | Nodes expanded: {greedy_h1_exp} | Max frontier: {greedy_h1_front}")
-        print(f"    Greedy(h2): Path: {' → '.join(greedy_h2_names)}")
+        print(f"    Greedy(h2): Path: {' -> '.join(greedy_h2_names)}")
         print(f"                Cost: {greedy_h2_cost} min | Nodes expanded: {greedy_h2_exp} | Max frontier: {greedy_h2_front}")
         print()
         
-        print(f"    A*(h1):     Path: {' → '.join(astar_h1_names)}")
+        print(f"    A*(h1):     Path: {' -> '.join(astar_h1_names)}")
         print(f"                Cost: {astar_h1_cost} min | Nodes expanded: {astar_h1_exp} | Max frontier: {astar_h1_front}")
-        print(f"    A*(h2):     Path: {' → '.join(astar_h2_names)}")
+        print(f"    A*(h2):     Path: {' -> '.join(astar_h2_names)}")
         print(f"                Cost: {astar_h2_cost} min | Nodes expanded: {astar_h2_exp} | Max frontier: {astar_h2_front}")
         print()
         
-        print(f"    IDA*(h1):   Path: {' → '.join(ida_h1_names)}")
+        print(f"    IDA*(h1):   Path: {' -> '.join(ida_h1_names)}")
         print(f"                Cost: {ida_h1_cost} min | Nodes expanded: {ida_h1_exp} | Max frontier: {ida_h1_front}")
-        print(f"    IDA*(h2):   Path: {' → '.join(ida_h2_names)}")
+        print(f"    IDA*(h2):   Path: {' -> '.join(ida_h2_names)}")
         print(f"                Cost: {ida_h2_cost} min | Nodes expanded: {ida_h2_exp} | Max frontier: {ida_h2_front}")
         print()
         
@@ -112,27 +112,26 @@ def run_layer2_tests():
         
         # Optimality check
         if astar_h1_cost == ucs_cost:
-            print(f"    ✓ A*(h1) found optimal path (same as UCS)")
+            print(f"    [OK] A*(h1) found optimal path (same as UCS)")
         else:
-            print(f"    ✗ A*(h1) suboptimal: {astar_h1_cost} vs UCS {ucs_cost}")
+            print(f"    [NO] A*(h1) suboptimal: {astar_h1_cost} vs UCS {ucs_cost}")
         
         if astar_h2_cost == ucs_cost:
-            print(f"    ✓ A*(h2) found optimal path (same as UCS)")
+            print(f"    [OK] A*(h2) found optimal path (same as UCS)")
         else:
-            print(f"    ✗ A*(h2) suboptimal: {astar_h2_cost} vs UCS {ucs_cost}")
+            print(f"    [NO] A*(h2) suboptimal: {astar_h2_cost} vs UCS {ucs_cost}")
         
         # Efficiency check
         if astar_h1_exp < ucs_expanded:
             efficiency_gain = ((ucs_expanded - astar_h1_exp) / ucs_expanded) * 100
-            print(f"    ✓ A*(h1) explored {astar_h1_exp - ucs_expanded} FEWER nodes ({efficiency_gain:.1f}% reduction)")
-        
+            print(f"    [OK] A*(h1) explored {ucs_expanded - astar_h1_exp} FEWER nodes ({efficiency_gain:.1f}% reduction)")
         if astar_h2_exp < astar_h1_exp:
             h2_gain = ((astar_h1_exp - astar_h2_exp) / astar_h1_exp) * 100
-            print(f"    ✓ h2 heuristic better than h1 ({h2_gain:.1f}% fewer nodes)")
+            print(f"    [OK] h2 heuristic better than h1 ({h2_gain:.1f}% fewer nodes)")
         
         # Greedy vs A*
         if greedy_h1_cost > astar_h1_cost:
-            print(f"    ✓ Greedy(h1) suboptimal: {greedy_h1_cost} vs A*(h1) {astar_h1_cost} ({greedy_h1_cost - astar_h1_cost} min worse)")
+            print(f"    [OK] Greedy(h1) suboptimal: {greedy_h1_cost} vs A*(h1) {astar_h1_cost} ({greedy_h1_cost - astar_h1_cost} min worse)")
         
         print("-" * 140)
         
@@ -208,8 +207,8 @@ def run_layer2_tests():
     print("Optimality (how many tests found suboptimal paths):")
     print(f"  Greedy(h1): {greedy_h1_suboptimal}/5 suboptimal")
     print(f"  Greedy(h2): {greedy_h2_suboptimal}/5 suboptimal")
-    print(f"  A*(h1):     {astar_h1_suboptimal}/5 suboptimal ✓ (should be 0)")
-    print(f"  A*(h2):     {astar_h2_suboptimal}/5 suboptimal ✓ (should be 0)")
+    print(f"  A*(h1):     {astar_h1_suboptimal}/5 suboptimal [OK] (should be 0)")
+    print(f"  A*(h2):     {astar_h2_suboptimal}/5 suboptimal [OK] (should be 0)")
     print()
     
     print("Recommendations:")

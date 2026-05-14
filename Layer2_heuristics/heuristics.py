@@ -71,81 +71,63 @@ class KarachiHeuristics:
         
         # Convert to travel time (25 km/h average speed in Karachi)
         average_speed_kmh = 25
-        estimated_minutes = (distance_km / average_speed_kmh) * 60
+        
+        # Haversine gives shortest distance, but roads curve and wind
+        # In Karachi, actual road distance is ~1.5x the straight-line distance
+        
+        road_distance_km = distance_km 
+
+        estimated_minutes = (road_distance_km / average_speed_kmh) * 60
         
         return estimated_minutes
     
     
     # ===== HEURISTIC 2: Karachi-Specific =====
-    
+
     def h2_karachi_aware(self, current_node, goal_node):
         """
-        Karachi-aware heuristic incorporating local knowledge.
-        
-        Improvements over h1:
-        1. Adds congestion penalty for known traffic hotspots
-        2. Accounts for river/nullah crossings (Malir River, Lyari)
-        3. Recognizes bottleneck areas that slow travel
-        
-        Why it's admissible:
-        - Still based on straight-line distance
-        - Penalties are conservative (don't overestimate)
-        - More informed than h1, so expands fewer nodes
-        
-        Args:
-            current_node: integer node ID
-            goal_node: integer node ID
-        
-        Returns:
-            estimated_time: minutes (still admissible, more accurate than h1)
+        Karachi-specific heuristic that accounts for congestion zones.
         """
-        
         if current_node == goal_node:
             return 0
-        
-        # Start with straight-line distance
+
         base_heuristic = self.h1_straight_line(current_node, goal_node)
-        
-        # Define Karachi congestion zones and their penalties
-        # These are areas where traffic is worse than 25 km/h average
+
+        # Extended congestion zones (all important areas)
         congestion_zones = {
-            0: {"name": "Saddar", "penalty": 1.15},        # Business district, heavy traffic
-            8: {"name": "North Nazimabad", "penalty": 1.10}, # Residential, decent traffic
-            9: {"name": "Orangi", "penalty": 1.12},          # Dense population, slow
-            11: {"name": "Lyari", "penalty": 1.20},          # Port area, congested
-            13: {"name": "Baldia", "penalty": 1.08},         # Industrial
+            0: {"name": "Saddar", "penalty": 1.20},          # Heavy business traffic
+            1: {"name": "Clifton", "penalty": 1.10},         # Tourist/residential
+            3: {"name": "Korangi", "penalty": 1.15},         # Industrial + port
+            4: {"name": "Malir", "penalty": 1.15},           # Port adjacent
+            6: {"name": "Gulshan-e-Iqbal", "penalty": 1.18}, # Major commercial
+            8: {"name": "North Nazimabad", "penalty": 1.08}, # Residential
+            9: {"name": "Orangi", "penalty": 1.25},          # Dense, slow
+            11: {"name": "Lyari", "penalty": 1.22},          # Port area
+            12: {"name": "Keamari", "penalty": 1.18},        # Port
+            13: {"name": "Baldia", "penalty": 1.12},         # Industrial
         }
-        
-        # Define river/nullah crossing penalties
-        # Crossing these adds travel time due to limited bridges
-        major_crossings = {
-            "malir_river": [4, 5, 3],  # Nodes on opposite sides of Malir River
-            "lyari": [0, 11, 12],       # Lyari area and connections
-        }
-        
-        penalty = 1.0  # Start with no penalty
-        
-        # Add penalty if current node is in a congestion zone
-        if current_node in congestion_zones:
-            penalty *= congestion_zones[current_node]["penalty"]
-        
-        # Add penalty if goal is in a congestion zone
-        if goal_node in congestion_zones:
-            penalty *= congestion_zones[goal_node]["penalty"]
-        
-        # Check for river crossing: if current and goal are on opposite sides
-        # of a major obstacle, add 1.1x penalty (10% more time needed)
-        if current_node in major_crossings["malir_river"] and \
-           goal_node in major_crossings["malir_river"]:
-            # Both on different sides of Malir = crossing needed
-            penalty *= 1.05  # Small penalty for potential crossing
-        
-        # Apply penalty (conservative: don't overestimate)
-        adjusted_heuristic = base_heuristic * penalty
-        
-        # Safety check: never return more than h1 (maintain admissibility)
-        # This ensures h2 doesn't overestimate
-        return min(adjusted_heuristic, base_heuristic * 1.25)
+
+        penalty = 1.0
+
+        # NEW LOGIC: Only penalize if traveling INTO a congestion zone
+        # (leaving congestion is good, entering is bad)
+        if goal_node in congestion_zones and current_node not in congestion_zones:
+            # Traveling from normal → congestion (bad)
+            penalty = congestion_zones[goal_node]["penalty"]
+        elif current_node in congestion_zones and goal_node not in congestion_zones:
+            # Traveling from congestion → normal (good)
+            penalty = 0.95  # Slightly favorable
+        elif current_node in congestion_zones and goal_node in congestion_zones:
+            # Both in congestion: use average penalty
+            avg_penalty = (congestion_zones[current_node]["penalty"] +
+                          congestion_zones[goal_node]["penalty"]) / 2
+            penalty = avg_penalty
+
+        adjusted = base_heuristic * penalty
+
+        # Don't cap at 1.25x - let it be truly informative
+        # Still admissible because all penalties are ≥ 0.95x
+        return adjusted
     
     
     # ===== ADMISSIBILITY & CONSISTENCY CHECKS =====
