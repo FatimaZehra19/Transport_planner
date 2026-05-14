@@ -125,11 +125,11 @@ Two admissible heuristics used by all three algorithms:
 
 Layer 2 also outputs a **heuristic consistency verification** for 5 selected edges (checking h(a) ≤ cost(a→b) + h(b) for both h1 and h2) and generates `layer2_chart.png` showing nodes expanded per test case across all algorithms.
 
-### Layer 3: Network Optimisation
+### Layer 3: Network Optimization
 
-This layer solves a **combinatorial optimisation problem**, not a pathfinding problem.
+This layer solves a **Optimization problem**, not a pathfinding problem.
 
-**Problem:** Select K=8 bus stops from 20 candidate locations to maximise city-wide service quality.
+**Problem:** Select K=8 bus stops from 20 candidate locations to maximize city-wide service quality.
 
 **State:** A sorted tuple of 8 stop node IDs. There are C(20,8) = 125,970 possible configurations.
 
