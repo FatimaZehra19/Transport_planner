@@ -1,96 +1,111 @@
+"""
+Simulated Annealing for Karachi network optimisation (Layer 3).
+
+SA escapes local optima by probabilistically accepting worse states.
+The acceptance probability for a worsening move of magnitude |delta| at
+temperature T is  exp(delta / T)  (delta < 0 for a decline in score).
+
+As T decreases, the algorithm becomes increasingly greedy — early on it
+explores widely; late in the run it refines the current best.
+
+Three cooling schedules are tested: r = 0.90 (fast), 0.95 (medium), 0.99 (slow).
+Each is run 50 independent times from random starts.
+"""
+
 import math
 import random
-from karachi_transport.graph import KarachiGraph
+from .network_optimizer import NetworkState
 
 
-def simulated_annealing(
-        graph,
-        heuristics,
-        start,
-        goal,
-        heuristic_func,
-        initial_temp=300,
-        cooling_rate=0.98,
-        max_iterations=1000
-):
+# ---------------------------------------------------------------------------
+# Single SA run
+# ---------------------------------------------------------------------------
 
+def simulated_annealing(graph, cooling_rate=0.95, initial_temp=0.30,
+                        min_temp=0.0001, max_iter=2000):
     """
-    Simulated Annealing using heuristic guidance.
+    Single Simulated Annealing run for network optimisation.
+
+    Maximises NetworkState.objective() using random single-swap neighbours.
+
+    Parameters
+    ----------
+    graph        : KarachiGraph
+    cooling_rate : float  — multiplicative cooling factor per iteration
+    initial_temp : float  — starting temperature (score scale: 0–1)
+    min_temp     : float  — stop when temperature drops below this
+    max_iter     : int    — hard cap on iterations
+
+    Returns
+    -------
+    best_state : NetworkState  — best configuration visited during the run
+    best_score : float
+    iterations : int           — number of iterations completed
     """
-
-    current = start
-
-    current_path = [current]
-
-    current_h = heuristic_func(current, goal)
-
-    nodes_expanded = 0
-
+    state = NetworkState.random_state(graph)
+    best_state = state
     temperature = initial_temp
 
-    for iteration in range(max_iterations):
-
-        # Goal reached
-        if current == goal:
-
-            total_cost = graph.calculate_path_cost(current_path)
-
-            return current_path, total_cost, nodes_expanded
-
-        neighbors = graph.get_neighbors(current)
-
-        valid_neighbors = [
-            (n, c)
-            for n, c in neighbors
-            if n not in current_path
-        ]
-
-        if not valid_neighbors:
-
+    for iteration in range(max_iter):
+        if temperature < min_temp:
             break
 
-        # Pick random neighbor
-        next_node, edge_cost = random.choice(valid_neighbors)
+        neighbour = state.random_neighbour()
+        delta = neighbour.objective() - state.objective()
 
-        next_h = heuristic_func(next_node, goal)
-
-        # Energy difference
-        delta = next_h - current_h
-
-        # Accept better move
-        if delta < 0:
-
-            accept = True
-
+        if delta > 0:
+            # Always accept improvement
+            state = neighbour
         else:
+            # Accept decline with Boltzmann probability
+            probability = math.exp(delta / temperature)
+            if random.random() < probability:
+                state = neighbour
 
-            probability = math.exp(-delta / temperature)
+        # Track global best (not just current)
+        if state.objective() > best_state.objective():
+            best_state = state
 
-            accept = random.random() < probability
-
-        if accept:
-
-            current = next_node
-
-            current_h = next_h
-
-            current_path.append(current)
-
-            nodes_expanded += 1
-
-        # Cool temperature
         temperature *= cooling_rate
 
-        # Stop when temperature too low
-        if temperature < 0.01:
+    return best_state, best_state.objective(), iteration + 1
 
-            break
 
-    # Final success check
-    if current == goal:
+# ---------------------------------------------------------------------------
+# Multi-run experiment
+# ---------------------------------------------------------------------------
 
-        total_cost = graph.calculate_path_cost(current_path)
+def run_sa_experiment(graph, cooling_rate, num_runs=50):
+    """
+    Run SA `num_runs` times with the given cooling rate.
 
-        return current_path, total_cost, nodes_expanded
+    Parameters
+    ----------
+    graph       : KarachiGraph
+    cooling_rate: float
+    num_runs    : int
 
-    return None, float("inf"), nodes_expanded
+    Returns
+    -------
+    scores : list[float]   — best score from each run
+    stats  : dict          — summary statistics
+    """
+    scores = []
+    for _ in range(num_runs):
+        _, score, _ = simulated_annealing(graph, cooling_rate=cooling_rate)
+        scores.append(score)
+
+    avg = sum(scores) / len(scores)
+    variance = sum((s - avg) ** 2 for s in scores) / len(scores)
+    std_dev = variance ** 0.5
+
+    stats = {
+        "cooling_rate": cooling_rate,
+        "num_runs":     num_runs,
+        "scores":       scores,
+        "avg_score":    avg,
+        "best_score":   max(scores),
+        "worst_score":  min(scores),
+        "std_dev":      std_dev,
+    }
+    return scores, stats
